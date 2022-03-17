@@ -45,7 +45,7 @@ def main():
         logging.error('No config found in result_dir.')
         sys.exit(1)
 
-    x_test = load_from_file(config["data_path"])
+    x_test = load_from_file(config["data_path"], file='test')
     test_dataset = SlidingWindowDataset(x_test, config["window_size"])
     _, _, test_loader = create_data_loaders(train_dataset=None,
                                             test_dataset=test_dataset,
@@ -81,7 +81,7 @@ def main():
     n_test = len(test_dataset)
     logging.info(f"n_test = {n_test}")
     recon_loss = trainer.infer_loss(test_loader, n_test)
-    idx_anomaly_test = test_dataset.data["idx_anomaly_test"]
+    idx_anomaly_test = load_from_file(config["data_path"], file="idx_anomaly_test")
     anomaly_index, test_labels = create_labels(idx_anomaly_test,
                                                n_test,
                                                config)
@@ -108,7 +108,7 @@ def main():
     config["precision"] = precision
     config["recall"] = recall
     config["F1"] = F1
-    config["total_inference_time"] = (time.perf_counter() - start_inference) / 60
+    config["total_inference_time"] = time.perf_counter() - start_inference
     save_config(config)
     logging.info("PR evaluation using KQE:")
     logging.info("Accuracy: {}".format(accuracy))

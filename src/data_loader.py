@@ -10,7 +10,7 @@ class SlidingWindowDataset(Dataset):
         self.data = data
         self.window = window
         self.horizon = horizon
-        logging.info(f'Created SlidingWindowDataset with shape {self.shape}')
+        # logging.info(f'Created SlidingWindowDataset with shape {self.size}')
 
     def __getitem__(self, index):
         x = self.data[index : index + self.window]
@@ -19,9 +19,13 @@ class SlidingWindowDataset(Dataset):
     def __len__(self):
         return len(self.data) - self.window + 1
 
-def load_from_file(path: str):
+def load_from_file(path: str, file='training'):
+    """
+    Load data from npz file
+    :param file = 'training' or 'test' or 'idx_anomaly_test'
+    """
     data = np.load(path)
-    return data
+    return data[file]
 
 def create_data_loaders(train_dataset=None, test_dataset=None, batch_size=128, val_split=0.1, shuffle=True, num_workers=1):
     train_loader, val_loader, test_loader = None, None, None

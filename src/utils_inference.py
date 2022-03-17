@@ -13,7 +13,7 @@ def create_labels(idx_anomaly_test, n_test, config):
     anomaly_index = []
     test_labels = np.zeros(n_test)
     for i in range(len(idx_anomaly_test)):
-        idx_start = idx_anomaly_test[i] - config["l_win"] + 1
+        idx_start = idx_anomaly_test[i] - config["window_size"] + 1
         idx_end = idx_anomaly_test[i] + 1
         if idx_start < 0:
             idx_start = 0

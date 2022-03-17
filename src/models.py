@@ -32,10 +32,10 @@ class Graph_Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x, mask):
+    def forward(self, x, src_mask):
         # x shape (b, n, k): b - batch size, n - window size, k - number of features
         x = self.conv(x)
         h_feat = self.feature_gat(x)
         h_cat = torch.cat([x, h_feat], dim=2)  # (b, n, 2k)
-        output = self.transformer_encoder(h_cat, mask)
+        output = self.transformer_encoder(h_cat, src_mask)
         return output

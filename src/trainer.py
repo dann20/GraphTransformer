@@ -103,10 +103,10 @@ class Trainer:
         Only used in inference phase. Compute recons loss in a slightly different manner.
         """
         self.model.eval()
-        batch_size = test_loader.batch_size
         recon_loss = np.zeros(n_test)
         with torch.no_grad():
             for i, batch in enumerate(test_loader):
+                batch_size = batch.size(0)
                 src = batch.float()
                 src = src.to(self.device)
                 out = self.model(src, src_mask=self.mask)
@@ -144,7 +144,8 @@ class Trainer:
         df = pd.DataFrame(self.losses)
         df['training_time'] = self.training_time_per_epoch
         df.insert(0, "epoch", [i for i in range(1, self.n_epochs + 1)], True)
-        df.to_csv(f"epoch_loss_{self.model_name}.csv", index=False, header=['Epoch', 'TrainingLoss', 'ValidationLoss', 'TrainingTime'])
+        df.to_csv(f"{self.config['result_dir']}epoch_loss_{self.model_name}.csv",
+                  index=False, header=['Epoch', 'TrainingLoss', 'ValidationLoss', 'TrainingTime'])
 
         return self.config
 
