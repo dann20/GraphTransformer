@@ -12,10 +12,33 @@ from data_loader import SlidingWindowDataset, create_data_loaders, load_from_fil
 from models import Graph_Transformer
 from trainer import Trainer
 from utils_config import get_args, process_config, get_config_from_json, save_config
-from utils_inference import create_labels, select_KQp_threshold
+from utils_inference import create_labels, select_KQp_threshold, select_threshold
 
 torch.manual_seed(10)
 np.random.seed(0)
+
+def heuristic_inference(recon_loss, anomaly_index, test_labels, config, n_threshold=20):
+    logging.info('Inference with heuristic method.')
+    config['threshold_method'] = 'heuristic'
+    best_thr, auc, accuracy, precision, recall, F1 = select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold)
+    config['best_threshold'] = best_thr
+    config['accuracy'] = accuracy
+    config["precision"] = precision
+    config["recall"] = recall
+    config["F1"] = F1
+    config["AUC"] = auc
+    return config
+
+def KQE_inference(recon_loss, anomaly_index, test_labels, config):
+    logging.info('Inference with KQE.')
+    config['threshold_method'] = 'KQE'
+    q_best, accuracy, precision, recall, F1 = select_KQp_threshold(recon_loss, anomaly_index, test_labels)
+    config['q_best'] = q_best
+    config['accuracy'] = accuracy
+    config["precision"] = precision
+    config["recall"] = recall
+    config["F1"] = F1
+    return config
 
 @torch.no_grad()
 def main():
@@ -86,35 +109,10 @@ def main():
                                                n_test,
                                                config)
 
-    # Now select a threshold
-    # threshold, auc = select_threshold(recon_loss,
-    #                                   anomaly_index,
-    #                                   test_labels,
-    #                                   config)
-    # config["AUC"] = auc
+    config = heuristic_inference(recon_loss, anomaly_index, test_labels, config, n_threshold=20)
 
-    # KQp_thres, q_best = select_KQp_threshold(threshold, recon_loss)
-    # config["q_best"] = q_best
-    # idx_detection = return_anomaly_idx_by_threshold(recon_loss, KQp_thres)
-    # # logging.info(idx_detection)
-    # idx_detection_augmented = augment_detected_idx(idx_detection, anomaly_index)
-    # # logging.info(idx_detection_augmented)
-    # precision, recall, F1, _, n_TP, n_FP, n_FN = compute_precision_and_recall(idx_detection_augmented,
-                                                                              # test_labels)
-
-    q_best, accuracy, precision, recall, F1 = select_KQp_threshold(recon_loss, anomaly_index, test_labels, config)
-    config['q_best'] = q_best
-    config['accuracy'] = accuracy
-    config["precision"] = precision
-    config["recall"] = recall
-    config["F1"] = F1
     config["total_inference_time"] = time.perf_counter() - start_inference
     save_config(config)
-    logging.info("PR evaluation using KQE:")
-    logging.info("Accuracy: {}".format(accuracy))
-    logging.info("Precision: {}".format(precision))
-    logging.info("Recall: {}".format(recall))
-    logging.info("F1: {}".format(F1))
     logging.info(f"Total inference time: {config['total_inference_time']} seconds.")
     logging.info("----------- COMPLETED INFERENCE PHASE. ------------")
     # logging.info("TP: {}".format(n_TP))
