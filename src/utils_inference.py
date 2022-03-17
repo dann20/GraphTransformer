@@ -122,7 +122,7 @@ def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold
     """
     Select best threshold based on best F1-score
     """
-    logging.info(f'Testing {n_threshold} evenly spaced in recon_loss range...')
+    logging.info(f'Testing {n_threshold} thresholds evenly spaced in recon_loss range...')
     precision = np.zeros(n_threshold)
     recall = np.zeros(n_threshold)
     F1 = np.zeros(n_threshold)
@@ -153,7 +153,9 @@ def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold
 
     logging.info("Augmented detection:")
     logging.info("Best F1 score is {}".format(np.amax(F1_aug)))
-    idx_best_threshold = np.squeeze(np.argwhere(F1_aug == np.amax(F1_aug)))[-1]
+    idx_best_threshold = np.squeeze(np.argwhere(F1_aug == np.amax(F1_aug)))
+    if idx_best_threshold.shape is not ():
+        idx_best_threshold = idx_best_threshold[-1]
     best_thres = threshold_list[idx_best_threshold]
     logging.info("Best threshold is {}".format(best_thres))
     logging.info("At this threshold, accuracy is {}, precision is {}, recall is {}".format(acc_aug[idx_best_threshold],
