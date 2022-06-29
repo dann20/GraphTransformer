@@ -25,7 +25,9 @@ class ConvLayer(nn.Module):
     def __init__(self, n_features, kernel_size=7):
         super(ConvLayer, self).__init__()
         self.padding = nn.ConstantPad1d((kernel_size - 1) // 2, 0.0)
-        self.conv = nn.Conv1d(in_channels=n_features, out_channels=n_features, kernel_size=kernel_size)
+        self.conv = nn.Conv1d(
+            in_channels=n_features, out_channels=n_features, kernel_size=kernel_size
+        )
         self.relu = nn.ReLU()
 
     def forward(self, x):
@@ -46,7 +48,16 @@ class FeatureAttentionLayer(nn.Module):
     :param use_bias: whether to include a bias term in the attention layer
     """
 
-    def __init__(self, n_features, window_size, dropout, alpha, embed_dim=None, use_gatv2=True, use_bias=True):
+    def __init__(
+        self,
+        n_features,
+        window_size,
+        dropout,
+        alpha,
+        embed_dim=None,
+        use_gatv2=True,
+        use_bias=True,
+    ):
         super(FeatureAttentionLayer, self).__init__()
         self.n_features = n_features
         self.window_size = window_size
@@ -85,15 +96,15 @@ class FeatureAttentionLayer(nn.Module):
         # Proposed by Brody et. al., 2021 (https://arxiv.org/pdf/2105.14491.pdf)
         # Linear transformation applied after concatenation and attention layer applied after leakyrelu
         if self.use_gatv2:
-            a_input = self._make_attention_input(x)                 # (b, k, k, 2*window_size)
-            a_input = self.leakyrelu(self.lin(a_input))             # (b, k, k, embed_dim)
-            e = torch.matmul(a_input, self.a).squeeze(3)            # (b, k, k, 1)
+            a_input = self._make_attention_input(x)  # (b, k, k, 2*window_size)
+            a_input = self.leakyrelu(self.lin(a_input))  # (b, k, k, embed_dim)
+            e = torch.matmul(a_input, self.a).squeeze(3)  # (b, k, k, 1)
 
         # Original GAT attention
         else:
-            Wx = self.lin(x)                                                  # (b, k, k, embed_dim)
-            a_input = self._make_attention_input(Wx)                          # (b, k, k, 2*embed_dim)
-            e = self.leakyrelu(torch.matmul(a_input, self.a)).squeeze(3)      # (b, k, k, 1)
+            Wx = self.lin(x)  # (b, k, k, embed_dim)
+            a_input = self._make_attention_input(Wx)  # (b, k, k, 2*embed_dim)
+            e = self.leakyrelu(torch.matmul(a_input, self.a)).squeeze(3)  # (b, k, k, 1)
 
         if self.use_bias:
             e += self.bias
@@ -127,7 +138,9 @@ class FeatureAttentionLayer(nn.Module):
         K = self.num_nodes
         blocks_repeating = v.repeat_interleave(K, dim=1)  # Left-side of the matrix
         blocks_alternating = v.repeat(1, K, 1)  # Right-side of the matrix
-        combined = torch.cat((blocks_repeating, blocks_alternating), dim=2)  # (b, K*K, 2*window_size)
+        combined = torch.cat(
+            (blocks_repeating, blocks_alternating), dim=2
+        )  # (b, K*K, 2*window_size)
 
         if self.use_gatv2:
             return combined.view(v.size(0), K, K, 2 * self.window_size)
@@ -143,8 +156,7 @@ class TransformerModel(nn.Module):
         self.linear = linear
 
     def forward(self, src, src_mask):
-        output = F.relu(self.linear(
-            self.encoder(self.src_embed(src), src_mask)))
+        output = F.relu(self.linear(self.encoder(self.src_embed(src), src_mask)))
         return output
 
 
@@ -239,13 +251,14 @@ class MultiHeadAttention(nn.Module):
             mask = mask.unsqueeze(1)
         nbatches = query.size(0)
         # 1) Do all the linear projections in batch from d_model => h x d_k
-        query, key, value = [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-                             for l, x in zip(self.linears, (query, key, value))]
+        query, key, value = [
+            l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+            for l, x in zip(self.linears, (query, key, value))
+        ]
         # 2) Apply attention on all the projected vectors in batch
         x, self.attn = attention(query, key, value, mask=mask, dropout=self.p)
         # 3) "Concat" using a view and apply a final linear
-        x = x.transpose(1, 2).contiguous().view(
-            nbatches, -1, self.h * self.d_k)
+        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h * self.d_k)
         return self.linears[-1](x)
 
 
@@ -264,7 +277,7 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-    """ Implements the PE function. """
+    """Implements the PE function."""
 
     def __init__(self, d_model, dropout, max_len=5000):
         super().__init__()
@@ -272,20 +285,22 @@ class PositionalEncoding(nn.Module):
 
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2)
-                             * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
+        )
 
         pe[:, 0::2] = torch.sin(position * div_term)
         try:
             pe[:, 1::2] = torch.cos(position * div_term)
         except:
-            div_term = torch.exp(torch.arange(0, d_model - 1, 2)
-                                 * (-math.log(10000.0) / d_model))
+            div_term = torch.exp(
+                torch.arange(0, d_model - 1, 2) * (-math.log(10000.0) / d_model)
+            )
             pe[:, 1::2] = torch.cos(position * div_term)
 
         pe = pe.unsqueeze(0)
         self.register_buffer("pe", pe)
 
     def forward(self, x):
-        x = x + Variable(self.pe[:, :x.size(1), :], requires_grad=False)
+        x = x + Variable(self.pe[:, : x.size(1), :], requires_grad=False)
         return self.dropout(x)

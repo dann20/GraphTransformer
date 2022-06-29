@@ -23,6 +23,7 @@ model_default_config = {
     "device": "cpu",
 }
 
+
 def get_config_from_json(json_file) -> dict:
     """
     Get the config from a json file
@@ -35,10 +36,12 @@ def get_config_from_json(json_file) -> dict:
 
     return config_dict
 
+
 def save_config(config):
     filename = config["result_dir"] + "training_config.json"
-    with open(filename, 'w', encoding='utf-8') as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
+
 
 def process_config(json_file):
     config = get_config_from_json(json_file)
@@ -51,6 +54,7 @@ def process_config(json_file):
     config["model_dir"] = os.path.join(save_dir, "models/")
     config["data_path"] = f"../data/{config['data_dir']}/{config['dataset']}.npz"
     return config
+
 
 def create_dirs(*dirs):
     """
@@ -67,12 +71,11 @@ def create_dirs(*dirs):
         print("Creating directories error: {0}".format(err))
         exit(-1)
 
+
 def get_args():
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument(
-        '-c', '--config',
-        metavar='C',
-        default='None',
-        help='The Configuration file')
+        "-c", "--config", metavar="C", default="None", help="The Configuration file"
+    )
     args = argparser.parse_args()
     return args

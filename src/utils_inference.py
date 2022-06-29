@@ -23,6 +23,7 @@ def create_labels(idx_anomaly_test, n_test, config):
         test_labels[idx_start:idx_end] = 1
     return anomaly_index, test_labels
 
+
 def return_anomaly_idx_by_threshold(test_anomaly_metric, threshold):
     # test_list = np.squeeze(np.ndarray.flatten(test_anomaly_metric))
     idx_error = np.squeeze(np.argwhere(test_anomaly_metric > threshold))
@@ -31,6 +32,7 @@ def return_anomaly_idx_by_threshold(test_anomaly_metric, threshold):
         idx_error = np.expand_dims(idx_error, 0)
 
     return list(idx_error)
+
 
 @jit(parallel=True)
 def augment_detected_idx(idx_detected_anomaly, anomaly_index):
@@ -42,16 +44,18 @@ def augment_detected_idx(idx_detected_anomaly, anomaly_index):
             if j in anomaly_index[i]:
                 in_original_detection = set(idx_detected_anomaly_extended)
                 current_anomaly_win = set(anomaly_index[i])
-                idx_detected_anomaly_extended = idx_detected_anomaly_extended + \
-                    list(current_anomaly_win - in_original_detection)
+                idx_detected_anomaly_extended = idx_detected_anomaly_extended + list(
+                    current_anomaly_win - in_original_detection
+                )
                 # logging.info(j)
                 break
     return list(np.sort(idx_detected_anomaly_extended))
 
+
 def count_TP_FP_FN(idx_detected_anomaly, test_labels):
     n_TP = 0
     n_FP = 0
-    #n_detection = len(idx_detected_anomaly)
+    # n_detection = len(idx_detected_anomaly)
     # for i in range(n_detection):
     for i in idx_detected_anomaly:
         # if test_labels[idx_detected_anomaly[i]] == 1:
@@ -60,14 +64,14 @@ def count_TP_FP_FN(idx_detected_anomaly, test_labels):
         else:
             n_FP = n_FP + 1
 
-    idx_undetected = list(set(np.arange(len(test_labels))
-                              ) - set(idx_detected_anomaly))
+    idx_undetected = list(set(np.arange(len(test_labels))) - set(idx_detected_anomaly))
     n_FN = 0
     for i in idx_undetected:
         if test_labels[i] == 1:
             n_FN = n_FN + 1
     n_TN = len(test_labels) - n_TP - n_FP - n_FN
     return n_TP, n_FP, n_FN, n_TN
+
 
 def compute_precision_and_recall(idx_detected_anomaly, test_labels):
     n_TP, n_FP, n_FN, n_TN = count_TP_FP_FN(idx_detected_anomaly, test_labels)
@@ -80,25 +84,27 @@ def compute_precision_and_recall(idx_detected_anomaly, test_labels):
     if precision + recall == 0:
         F1 = 0
     else:
-        F1 = 2 * (precision * recall)/(precision + recall)
+        F1 = 2 * (precision * recall) / (precision + recall)
     accuracy = (n_TP + n_TN) / (n_TP + n_FN + n_FP + n_TN)
-    fpr = n_FP/(n_FP + n_TN)
+    fpr = n_FP / (n_FP + n_TN)
 
     return precision, recall, F1, accuracy, fpr, n_TP, n_FP, n_FN
+
 
 def KQp(data, q):
     data2 = np.sort(data)  # sap xep tang dan
     n = np.shape(data2)[0]  # kich thuoc
-    p = 1-q  # q tu xet, dat bang smth 0.05 0.025 0.01
-    h = math.sqrt((p*q)/(n+1))
+    p = 1 - q  # q tu xet, dat bang smth 0.05 0.025 0.01
+    h = math.sqrt((p * q) / (n + 1))
     KQ = 0
-    for i in range(1, n+1):
-        a = ((i/n)-p)/h
-        b = (((i-1)/n)-p)/h
-        TP = (norm.cdf(a)-norm.cdf(b))*data2[i-1]  # normcdf thu trong matlab
-        KQ = KQ+TP
+    for i in range(1, n + 1):
+        a = ((i / n) - p) / h
+        b = (((i - 1) / n) - p) / h
+        TP = (norm.cdf(a) - norm.cdf(b)) * data2[i - 1]  # normcdf thu trong matlab
+        KQ = KQ + TP
     # KQp = KQ;
     return KQ
+
 
 def plot_roc_curve(fpr_aug, recall_aug, config, n_threshold):
     tpr = np.insert(recall_aug, [0, n_threshold], [0, 1])
@@ -106,8 +112,9 @@ def plot_roc_curve(fpr_aug, recall_aug, config, n_threshold):
     auc = metrics.auc(fpr, tpr)
     logging.info(f"AUC = {auc}")
     lw = 2
-    plt.plot(fpr, tpr, color="darkorange", lw=lw,
-             label="ROC curve (area = %0.4f)" % auc)
+    plt.plot(
+        fpr, tpr, color="darkorange", lw=lw, label="ROC curve (area = %0.4f)" % auc
+    )
     plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -118,11 +125,14 @@ def plot_roc_curve(fpr_aug, recall_aug, config, n_threshold):
     plt.savefig(config["result_dir"] + "augmentedroc.pdf")
     return auc
 
+
 def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold):
     """
     Select best threshold based on best F1-score
     """
-    logging.info(f'Testing {n_threshold} thresholds evenly spaced in recon_loss range...')
+    logging.info(
+        f"Testing {n_threshold} thresholds evenly spaced in recon_loss range..."
+    )
     precision = np.zeros(n_threshold)
     recall = np.zeros(n_threshold)
     F1 = np.zeros(n_threshold)
@@ -131,8 +141,9 @@ def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold
     F1_aug = np.zeros(n_threshold)
     acc_aug = np.zeros(n_threshold)
     fpr_aug = np.zeros(n_threshold)
-    threshold_list = np.linspace(np.amin(recon_loss), np.amax(
-        recon_loss), n_threshold, endpoint=False)
+    threshold_list = np.linspace(
+        np.amin(recon_loss), np.amax(recon_loss), n_threshold, endpoint=False
+    )
     threshold_list = np.flip(threshold_list)
 
     for i, threshold in enumerate(threshold_list):
@@ -142,12 +153,21 @@ def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold
         # a method to discount the factor one anomaly appears in multiple consecutive windows
         # introduced in "Unsupervised anomaly detection via variational auto-encoder for seasonal kpis in web applications"
         idx_detection_augmented = augment_detected_idx(idx_detection, anomaly_index)
-        precision_aug[i], recall_aug[i], F1_aug[i], acc_aug[i], fpr_aug[i], _, _, _ = compute_precision_and_recall(idx_detection_augmented,
-                                                                                                                   test_labels)
-        logging.info("At this threshold, accuracy is {}, precision is {}, recall is {}, F1 is {}".format(acc_aug[i],
-                                                                                                         precision_aug[i],
-                                                                                                         recall_aug[i],
-                                                                                                         F1_aug[i]))
+        (
+            precision_aug[i],
+            recall_aug[i],
+            F1_aug[i],
+            acc_aug[i],
+            fpr_aug[i],
+            _,
+            _,
+            _,
+        ) = compute_precision_and_recall(idx_detection_augmented, test_labels)
+        logging.info(
+            "At this threshold, accuracy is {}, precision is {}, recall is {}, F1 is {}".format(
+                acc_aug[i], precision_aug[i], recall_aug[i], F1_aug[i]
+            )
+        )
 
     auc = plot_roc_curve(fpr_aug, recall_aug, config, n_threshold)
 
@@ -158,10 +178,22 @@ def select_threshold(recon_loss, anomaly_index, test_labels, config, n_threshold
         idx_best_threshold = idx_best_threshold[-1]
     best_thres = threshold_list[idx_best_threshold]
     logging.info("Best threshold is {}".format(best_thres))
-    logging.info("At this threshold, accuracy is {}, precision is {}, recall is {}".format(acc_aug[idx_best_threshold],
-                                                                                           precision_aug[idx_best_threshold],
-                                                                                           recall_aug[idx_best_threshold]))
-    return best_thres, auc, acc_aug[idx_best_threshold], precision_aug[idx_best_threshold], recall_aug[idx_best_threshold], F1_aug[idx_best_threshold]
+    logging.info(
+        "At this threshold, accuracy is {}, precision is {}, recall is {}".format(
+            acc_aug[idx_best_threshold],
+            precision_aug[idx_best_threshold],
+            recall_aug[idx_best_threshold],
+        )
+    )
+    return (
+        best_thres,
+        auc,
+        acc_aug[idx_best_threshold],
+        precision_aug[idx_best_threshold],
+        recall_aug[idx_best_threshold],
+        F1_aug[idx_best_threshold],
+    )
+
 
 def select_KQp_threshold(recon_loss, anomaly_index, test_labels):
     q_list = [0.99, 0.9, 0.1, 0.02, 0.01, 0.0095]
@@ -176,21 +208,37 @@ def select_KQp_threshold(recon_loss, anomaly_index, test_labels):
         logging.info("Testing with q = {}".format(q))
         temp_thres = KQp(recon_loss, q)
         idx_detection = return_anomaly_idx_by_threshold(recon_loss, temp_thres)
-        idx_detection_augmented = augment_detected_idx(
-            idx_detection, anomaly_index)
-        precision_aug[i], recall_aug[i], F1_aug[i], acc_aug[i], _, _, _, _ = compute_precision_and_recall(idx_detection_augmented, test_labels)
-        logging.info("At this threshold, accuracy is {}, precision is {}, recall is {}, F1 is {}".format(acc_aug[i],
-                                                                                                  precision_aug[i],
-                                                                                                  recall_aug[i],
-                                                                                                  F1_aug[i]))
-
+        idx_detection_augmented = augment_detected_idx(idx_detection, anomaly_index)
+        (
+            precision_aug[i],
+            recall_aug[i],
+            F1_aug[i],
+            acc_aug[i],
+            _,
+            _,
+            _,
+            _,
+        ) = compute_precision_and_recall(idx_detection_augmented, test_labels)
+        logging.info(
+            "At this threshold, accuracy is {}, precision is {}, recall is {}, F1 is {}".format(
+                acc_aug[i], precision_aug[i], recall_aug[i], F1_aug[i]
+            )
+        )
 
     logging.info("Best F1 score is {}".format(max(F1_aug)))
     idx_best_q = np.argmax(F1_aug)
     q_best = q_list[idx_best_q]
     logging.info("Best q is {}".format(q_list[idx_best_q]))
-    logging.info("At this threshold, accuracy is {}, precision is {}, recall is {}".format(acc_aug[idx_best_q],
-                                                                                    precision_aug[idx_best_q],
-                                                                                    recall_aug[idx_best_q]))
+    logging.info(
+        "At this threshold, accuracy is {}, precision is {}, recall is {}".format(
+            acc_aug[idx_best_q], precision_aug[idx_best_q], recall_aug[idx_best_q]
+        )
+    )
 
-    return q_best, acc_aug[idx_best_q], precision_aug[idx_best_q], recall_aug[idx_best_q], F1_aug[idx_best_q]
+    return (
+        q_best,
+        acc_aug[idx_best_q],
+        precision_aug[idx_best_q],
+        recall_aug[idx_best_q],
+        F1_aug[idx_best_q],
+    )
